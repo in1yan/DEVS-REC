@@ -70,55 +70,80 @@ const socialData = [
   }
 ];
 
-export default function SocialGallery({ sectionRef: externalSectionRef, containerRef: externalContainerRef }) {
-  const internalSectionRef = useRef(null);
+export default function SocialGallery({ containerRef: externalContainerRef }) {
   const internalContainerRef = useRef(null);
   const modalRef = useRef(null);
   const [activeCard, setActiveCard] = useState(null);
 
-  // Use external refs if provided, otherwise use internal refs
-  const sectionRef = externalSectionRef || internalSectionRef;
+  // Use external ref if provided, otherwise use internal ref
   const containerRef = externalContainerRef || internalContainerRef;
 
   useGSAP(() => {
-    const container = containerRef.current;
-    const section = sectionRef.current;
-    if (!container || !section) return;
+    // Add a small delay to ensure DOM is ready
+    const timeoutId = setTimeout(() => {
+      const container = containerRef.current;
+      if (!container) return;
 
-    // Perfect horizontal synchronization 
-    const distanceToScroll = container.scrollWidth - window.innerWidth;
+      // Find the parent section element
+      const section = container.closest('.sg-section');
+      if (!section) return;
 
-    const cards = gsap.utils.toArray('.sg-card');
-    gsap.set(cards, { clearProps: "y,opacity,scale,transform" });
+      // Perfect horizontal synchronization 
+      const distanceToScroll = container.scrollWidth - window.innerWidth;
 
-    // Ensure the scroll stops smoothly without snapping
-    const tl = gsap.timeline({
-      scrollTrigger: {
-        trigger: section,
-        start: "top top",
-        end: () => `+=${distanceToScroll}`,
-        scrub: 0.8,
-        pin: true,
-        invalidateOnRefresh: true,
-        anticipatePin: 1,
-      }
-    });
+      if (distanceToScroll <= 0) return;
 
-    // Horizontal sliding behavior
-    tl.fromTo(container,
-      { x: -distanceToScroll },
-      { x: 0, ease: "none" }
-    );
+      const cards = gsap.utils.toArray('.sg-card');
+      gsap.set(cards, { clearProps: "y,opacity,scale,transform" });
 
-    return () => {
-      // Only kill ScrollTriggers associated with this section
-      ScrollTrigger.getAll().forEach(t => {
-        if (t.trigger === section) {
-          t.kill();
+      // Ensure the scroll stops smoothly without snapping
+      const tl = gsap.timeline({
+        scrollTrigger: {
+          trigger: section,
+          start: "top top",
+          end: () => `+=${distanceToScroll}`,
+          scrub: 0.8,
+          pin: true,
+          invalidateOnRefresh: true,
+          anticipatePin: 1,
+          onEnter: () => {
+            // Add will-change only when animation is active
+            gsap.set(container, { willChange: "transform" });
+          },
+          onLeave: () => {
+            // Remove will-change when animation is done
+            gsap.set(container, { clearProps: "willChange" });
+          },
+          onEnterBack: () => {
+            gsap.set(container, { willChange: "transform" });
+          },
+          onLeaveBack: () => {
+            gsap.set(container, { clearProps: "willChange" });
+          }
         }
       });
+
+      // Horizontal sliding behavior
+      tl.fromTo(container,
+        { x: -distanceToScroll },
+        { x: 0, ease: "none" }
+      );
+    }, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+      const container = containerRef.current;
+      const section = container?.closest('.sg-section');
+      // Only kill ScrollTriggers associated with this section
+      if (section) {
+        ScrollTrigger.getAll().forEach(t => {
+          if (t.trigger === section) {
+            t.kill();
+          }
+        });
+      }
     };
-  }, { scope: sectionRef, dependencies: [] });
+  }, { dependencies: [] });
 
   const openModal = (card, e) => {
     setActiveCard(card);

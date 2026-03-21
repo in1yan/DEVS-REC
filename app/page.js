@@ -1001,9 +1001,8 @@ export default function Home() {
         </div>
       </section>
       <section ref={socialGallerySectionRef} className="sg-section" id="repeat-section">
-        <SocialGallery 
-          sectionRef={socialGallerySectionRef} 
-          containerRef={socialGalleryContainerRef} 
+        <SocialGallery
+          containerRef={socialGalleryContainerRef}
         />
       </section>
       <section id="coffee-section" className="coffee-gallery-section">

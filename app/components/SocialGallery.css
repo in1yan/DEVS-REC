@@ -17,7 +17,6 @@
   padding: 0 15vw; 
   width: max-content; 
   gap: 6vw; /* Premium spatial padding */
-  will-change: transform;
   height: 100vh; /* Mandatory for vertical bounds tracking */
 }
 
@@ -34,7 +33,6 @@
   flex-direction: column;
   justify-content: center;
   transform-style: preserve-3d;
-  will-change: transform;
   box-shadow: 0 10px 40px rgba(0,0,0,0.3);
   cursor: pointer;
   transition: border-color 0.4s ease, box-shadow 0.4s ease, transform 0.4s cubic-bezier(0.2, 1, 0.3, 1);
@@ -46,6 +44,7 @@
   border-color: rgba(214, 255, 0, 0.4);
   box-shadow: 0 30px 80px rgba(0,0,0,0.8), 0 0 30px rgba(214, 255, 0, 0.06);
   z-index: 10; /* Bring hovered cards out over adjacent sizing */
+  will-change: transform; /* Only apply will-change on hover */
 }
 
 /* =====================================
