@@ -1,17 +1,28 @@
 'use client';
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+if (typeof window !== 'undefined') {
+  gsap.registerPlugin(ScrollTrigger);
+}
 
 const useMedia = (queries, values, defaultValue) => {
-  const get = () => values[queries.findIndex(q => matchMedia(q).matches)] ?? defaultValue;
-
-  const [value, setValue] = useState(get);
+  const [value, setValue] = useState(defaultValue);
 
   useEffect(() => {
-    const handler = () => setValue(get);
-    queries.forEach(q => matchMedia(q).addEventListener('change', handler));
-    return () => queries.forEach(q => matchMedia(q).removeEventListener('change', handler));
-  }, [queries]);
+    if (typeof window === 'undefined') return;
+
+    const get = () => values[queries.findIndex(q => window.matchMedia(q).matches)] ?? defaultValue;
+
+    setValue(get());
+
+    const handler = () => setValue(get());
+    const mediaQueries = queries.map(q => window.matchMedia(q));
+    mediaQueries.forEach(mq => mq.addEventListener('change', handler));
+
+    return () => mediaQueries.forEach(mq => mq.removeEventListener('change', handler));
+  }, [queries, values, defaultValue]);
 
   return value;
 };
@@ -22,6 +33,11 @@ const useMeasure = () => {
 
   useLayoutEffect(() => {
     if (!ref.current) return;
+
+    // Set initial size immediately
+    const rect = ref.current.getBoundingClientRect();
+    setSize({ width: rect.width, height: rect.height });
+
     const ro = new ResizeObserver(([entry]) => {
       const { width, height } = entry.contentRect;
       setSize({ width, height });
@@ -51,18 +67,22 @@ const Masonry = ({
   scaleOnHover = true,
   hoverScale = 0.95,
   blurToFocus = true,
-  colorShiftOnHover = false
+  colorShiftOnHover = false,
+  triggerStart = 'top 90%'  // Control when animation starts - higher % = earlier trigger
 }) => {
   const columns = useMedia(
     ['(min-width:1500px)', '(min-width:1000px)', '(min-width:600px)', '(min-width:400px)'],
     [5, 4, 3, 2],
-    1
+    2
   );
 
   const [containerRef, { width }] = useMeasure();
   const [imagesReady, setImagesReady] = useState(false);
+  const hasMounted = useRef(false);
 
   const getInitialPosition = (item) => {
+    if (typeof window === 'undefined') return { x: item.x, y: item.y };
+
     const containerRect = containerRef.current?.getBoundingClientRect();
     if (!containerRect) return { x: item.x, y: item.y };
 
@@ -74,11 +94,11 @@ const Masonry = ({
 
     switch (direction) {
       case 'top':
-        return { x: item.x, y: -200 };
+        return { x: item.x, y: -400 };
       case 'bottom':
         return { x: item.x, y: window.innerHeight + 200 };
       case 'left':
-        return { x: -200, y: item.y };
+        return { x: -400, y: item.y };
       case 'right':
         return { x: window.innerWidth + 200, y: item.y };
       case 'center':
@@ -92,7 +112,9 @@ const Masonry = ({
   };
 
   useEffect(() => {
-    preloadImages(items.map(i => i.img)).then(() => setImagesReady(true));
+    preloadImages(items.map(i => i.img)).then(() => {
+      setImagesReady(true);
+    });
   }, [items]);
 
   const grid = useMemo(() => {
@@ -113,44 +135,60 @@ const Masonry = ({
     });
   }, [columns, items, width]);
 
-  const hasMounted = useRef(false);
+  useEffect(() => {
+    if (!imagesReady || grid.length === 0) return;
+    if (typeof window === 'undefined') return;
 
-  useLayoutEffect(() => {
-    if (!imagesReady) return;
+    const ctx = gsap.context(() => {
+      grid.forEach((item, index) => {
+        const selector = `[data-key="${item.id}"]`;
+        const element = document.querySelector(selector);
+        if (!element) return;
 
-    grid.forEach((item, index) => {
-      const selector = `[data-key="${item.id}"]`;
-      const animProps = { x: item.x, y: item.y, width: item.w, height: item.h };
+        const animProps = { x: item.x, y: item.y, width: item.w, height: item.h };
 
-      if (!hasMounted.current) {
-        const start = getInitialPosition(item);
-        gsap.fromTo(selector, {
-          opacity: 0,
-          x: start.x,
-          y: start.y,
-          width: item.w,
-          height: item.h,
-          ...(blurToFocus && { filter: 'blur(10px)' })
-        }, {
-          opacity: 1,
-          ...animProps,
-          ...(blurToFocus && { filter: 'blur(0px)' }),
-          duration: 0.8,
-          ease: 'power3.out',
-          delay: index * stagger
-        });
-      } else {
-        gsap.to(selector, {
-          ...animProps,
-          duration,
-          ease,
-          overwrite: 'auto'
-        });
-      }
-    });
+        if (!hasMounted.current) {
+          const start = getInitialPosition(item);
 
-    hasMounted.current = true;
-  }, [grid, imagesReady, stagger, animateFrom, blurToFocus, duration, ease]);
+          gsap.set(selector, {
+            opacity: 0,
+            x: start.x,
+            y: start.y,
+            width: item.w,
+            height: item.h,
+            ...(blurToFocus && { filter: 'blur(10px)' })
+          });
+
+          ScrollTrigger.create({
+            trigger: selector,
+            start: triggerStart,
+            once: true,
+            onEnter: () => {
+              gsap.to(selector, {
+                opacity: 1,
+                ...animProps,
+                ...(blurToFocus && { filter: 'blur(0px)' }),
+                duration: 0.8,
+                ease: 'power3.out',
+                delay: index * stagger
+              });
+            }
+          });
+        } else {
+          gsap.to(selector, {
+            ...animProps,
+            duration,
+            ease,
+            overwrite: 'auto'
+          });
+        }
+      });
+
+      hasMounted.current = true;
+    }, containerRef);
+
+    return () => ctx.revert();
+  }, [grid, imagesReady, stagger, animateFrom, blurToFocus, duration, ease, triggerStart]);
 
   const handleMouseEnter = (id, element) => {
     if (scaleOnHover) {
@@ -181,12 +219,12 @@ const Masonry = ({
   };
 
   return (
-    <div ref={containerRef} className="relative w-full h-full">
+    <div ref={containerRef} className="relative w-full" style={{ minHeight: '800px' }}>
       {grid.map(item => (
         <div
           key={item.id}
           data-key={item.id}
-          className="absolute box-content"
+          className="absolute box-content cursor-pointer"
           style={{ willChange: 'transform, width, height, opacity' }}
           onClick={() => window.open(item.url, '_blank', 'noopener')}
           onMouseEnter={e => handleMouseEnter(item.id, e.currentTarget)}

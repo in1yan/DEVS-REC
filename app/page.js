@@ -247,25 +247,29 @@ export default function Home() {
           },
         });
         const lineRect = codeLine.getBoundingClientRect();
-        const dSpan = document.querySelector(".code-char-2");
-        if (dSpan && lineRect.width > 0) {
-          const dRect = dSpan.getBoundingClientRect();
-          const dCenterInLine = dRect.left + dRect.width / 2 - lineRect.left;
-          const dOriginPct =
-            ((dCenterInLine / lineRect.width) * 100).toFixed(2) + "%";
-          const dPhase1XPx =
-            window.innerWidth / 2 - (lineRect.left + dCenterInLine);
+        const firstChar = document.querySelector(".code-char-0");
+        const lastChar = document.querySelector(".code-char-3");
+        if (firstChar && lastChar && lineRect.width > 0) {
+          // Calculate the center of the entire "CODE" word
+          const firstRect = firstChar.getBoundingClientRect();
+          const lastRect = lastChar.getBoundingClientRect();
+          const wordCenterX = (firstRect.left + lastRect.right) / 2;
+          const wordCenterInLine = wordCenterX - lineRect.left;
+          const wordOriginPct =
+            ((wordCenterInLine / lineRect.width) * 100).toFixed(2) + "%";
+          const wordPhase1XPx =
+            window.innerWidth / 2 - (lineRect.left + wordCenterInLine);
 
           tl.set(
             ".stagger-line.line-2",
-            { transformOrigin: dOriginPct + " center" },
+            { transformOrigin: wordOriginPct + " center" },
             0,
           );
           tl.to(
             ".stagger-line.line-2",
             {
               scale: 5,
-              x: dPhase1XPx + 8,
+              x: wordPhase1XPx,
               ease: "power1.inOut",
               duration: 1,
             },
@@ -287,11 +291,6 @@ export default function Home() {
             0,
           );
 
-          tl.to(
-            [".code-char-0", ".code-char-1", ".code-char-3"],
-            { opacity: 0, ease: "power2.in", duration: 1 },
-            1,
-          );
           tl.to(
             ".stagger-line.line-2",
             { scale: 100, ease: "power3.in", duration: 1.5 },
@@ -1007,6 +1006,7 @@ export default function Home() {
             duration={0.6}
             stagger={0.05}
             animateFrom="bottom"
+            triggerStart="top 180%"
             scaleOnHover
             hoverScale={0.95}
             blurToFocus
