@@ -7,9 +7,84 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Flip } from "gsap/Flip";
 import { useGSAP } from "@gsap/react";
 import Lenis from "lenis";
-import SocialGallery from "./components/SocialGallery";
+import Masonry from '../components/Masonry'
 
 export default function Home() {
+
+  const items = [
+    {
+      id: "1",
+      img: "/upscalemedia-transformed.png",
+      url: "https://example.com/latte-art-night",
+      height: 400,
+    },
+    {
+      id: "2",
+      img: "/upscalemedia-transformed.png",
+      url: "https://example.com/brew-workshop",
+      height: 250,
+    },
+    {
+      id: "3",
+      img: "/upscalemedia-transformed.png",
+      url: "https://example.com/cupping-session",
+      height: 600,
+    },
+    {
+      id: "4",
+      img: "/upscalemedia-transformed.png",
+      url: "https://example.com/roast-toast",
+      height: 350,
+    },
+    {
+      id: "5",
+      img: "/upscalemedia-transformed.png",
+      url: "https://example.com/bean-origins",
+      height: 450,
+    },
+    {
+      id: "6",
+      img: "/upscalemedia-transformed.png",
+      url: "https://example.com/coffee-cocktails",
+      height: 500,
+    },
+    {
+      id: "7",
+      img: "/upscalemedia-transformed.png",
+      url: "https://example.com/coffee-expo",
+      height: 300,
+    },
+    {
+      id: "8",
+      img: "/upscalemedia-transformed.png",
+      url: "https://example.com/coffee-cocktails-2",
+      height: 550,
+    },
+    {
+      id: "9",
+      img: "/upscalemedia-transformed.png",
+      url: "https://example.com/coffee-cocktails-2",
+      height: 350,
+    },
+    {
+      id: "10",
+      img: "/upscalemedia-transformed.png",
+      url: "https://example.com/coffee-cocktails-2",
+      height: 550,
+    },
+    {
+      id: "11",
+      img: "/upscalemedia-transformed.png",
+      url: "https://example.com/coffee-cocktails-2",
+      height: 250,
+    },
+    {
+      id: "12",
+      img: "/upscalemedia-transformed.png",
+      url: "https://example.com/coffee-cocktails-2",
+      height: 550,
+    },
+  ];
   const containerRef = useRef(null);
 
   useGSAP(
@@ -372,9 +447,12 @@ export default function Home() {
         });
       }
 
-      testCards.forEach((card) =>
-        card.addEventListener("mouseenter", () => triggerTyping(card)),
-      );
+      const testCardHandlers = new Map();
+      testCards.forEach((card) => {
+        const mouseenterHandler = () => triggerTyping(card);
+        card.addEventListener("mouseenter", mouseenterHandler);
+        testCardHandlers.set(card, mouseenterHandler);
+      });
 
       // 6. Coffee Gallery Entrance and Tilt
       gsap.from(".coffee-card", {
@@ -391,8 +469,10 @@ export default function Home() {
       });
 
       const coffeeCards = gsap.utils.toArray(".coffee-card");
+      const cardHandlers = new Map();
+
       coffeeCards.forEach((card) => {
-        card.addEventListener("mousemove", (e) => {
+        const mousemoveHandler = (e) => {
           const rect = card.getBoundingClientRect();
           const x = e.clientX - rect.left;
           const y = e.clientY - rect.top;
@@ -405,15 +485,21 @@ export default function Home() {
             ease: "power2.out",
             transformPerspective: 1000,
           });
-        });
-        card.addEventListener("mouseleave", () => {
+        };
+
+        const mouseleaveHandler = () => {
           gsap.to(card, {
             rotateX: 0,
             rotateY: 0,
             duration: 0.5,
             ease: "power2.out",
           });
-        });
+        };
+
+        card.addEventListener("mousemove", mousemoveHandler);
+        card.addEventListener("mouseleave", mouseleaveHandler);
+
+        cardHandlers.set(card, { mousemoveHandler, mouseleaveHandler });
       });
 
       // GSAP Flip Expansion
@@ -421,8 +507,10 @@ export default function Home() {
       const detailImg = document.querySelector("#detail-active-img");
       const detailTitle = document.querySelector("#detail-active-title");
       const detailDesc = document.querySelector("#detail-active-desc");
+      const cardClickHandlers = new Map();
+
       coffeeCards.forEach((card) => {
-        card.addEventListener("click", () => {
+        const clickHandler = () => {
           const cardImg = card.querySelector(".card-img");
           const cardTitle = card.querySelector(".card-title");
           const cardContent = card.querySelector(".hidden-content");
@@ -452,22 +540,28 @@ export default function Home() {
               });
             },
           });
-        });
+        };
+
+        card.addEventListener("click", clickHandler);
+        cardClickHandlers.set(card, clickHandler);
       });
 
-      document.querySelector(".detail-close")?.addEventListener("click", () => {
+      const detailCloseHandler = () => {
         overlay.classList.remove("active");
         document.body.style.overflow = "";
-      });
+      };
+
+      document.querySelector(".detail-close")?.addEventListener("click", detailCloseHandler);
 
       // 7. Team Interaction Focus Effect
       const teamRows = gsap.utils.toArray(".team-row");
       const teamImgs = gsap.utils.toArray(".team-img");
       let currentTeam = "tech";
       let isAnimating = false;
+      const teamRowHandlers = new Map();
 
       teamRows.forEach((row) => {
-        row.addEventListener("click", function () {
+        const clickHandler = function () {
           const target = this.dataset.team;
           if (target === currentTeam || isAnimating) return;
           isAnimating = true;
@@ -526,12 +620,44 @@ export default function Home() {
               },
               "-=0.3",
             );
-        });
+        };
+
+        row.addEventListener("click", clickHandler);
+        teamRowHandlers.set(row, clickHandler);
       });
 
       return () => {
         lenis.destroy();
         gsap.ticker.remove(lenis.raf);
+        lenis.off("scroll", ScrollTrigger.update);
+
+        // Kill all ScrollTriggers
+        ScrollTrigger.getAll().forEach((t) => t.kill());
+
+        // Revert matchMedia listeners
+        mm.revert();
+
+        // Remove test card event listeners
+        testCardHandlers.forEach((handler, card) => {
+          card.removeEventListener("mouseenter", handler);
+        });
+
+        // Remove coffee card event listeners
+        cardHandlers.forEach((handlers, card) => {
+          card.removeEventListener("mousemove", handlers.mousemoveHandler);
+          card.removeEventListener("mouseleave", handlers.mouseleaveHandler);
+        });
+
+        cardClickHandlers.forEach((handler, card) => {
+          card.removeEventListener("click", handler);
+        });
+
+        document.querySelector(".detail-close")?.removeEventListener("click", detailCloseHandler);
+
+        // Remove team row event listeners
+        teamRowHandlers.forEach((handler, row) => {
+          row.removeEventListener("click", handler);
+        });
       };
     },
     { scope: containerRef },
@@ -874,125 +1000,18 @@ export default function Home() {
           <h2 className="section-title">OUR EVENTS</h2>
         </div>
 
-        <div className="coffee-container">
-          <div className="coffee-grid">
-            {[
-              {
-                id: 1,
-                cls: "v-tall",
-                date: "24 MAR 2026",
-                title: "LATTE ART NIGHT",
-                desc: "Join us for an exclusive evening where the foam is the canvas and the espresso is the ink.",
-              },
-              {
-                id: 2,
-                cls: "v-wide",
-                date: "28 MAR 2026",
-                title: "BREW WORKSHOP",
-                desc: "From V60 to Chemex, discover the science behind the perfect extraction.",
-              },
-              {
-                id: 3,
-                cls: "v-small",
-                date: "02 APR 2026",
-                title: "CUPPING SESSION",
-                desc: "A sensory journey through the coffee belt.",
-              },
-              {
-                id: 4,
-                cls: "v-medium",
-                date: "05 APR 2026",
-                title: "ROAST & TOAST",
-                desc: "Ever wondered how green beans become brown?",
-              },
-              {
-                id: 5,
-                cls: "v-wide",
-                date: "10 APR 2026",
-                title: "BEAN ORIGINS",
-                desc: "A deep dive into the ethics and agriculture of specialty coffee.",
-              },
-              {
-                id: 6,
-                cls: "v-tall",
-                date: "15 APR 2026",
-                title: "COFFEE COCKTAILS",
-                desc: "Exquisite espresso martinis, cold-brew negronis, and more.",
-              },
-              {
-                id: 7,
-                cls: "v-featured",
-                date: "20 APR 2026",
-                title: "SPECIALTY COFFEE EXPO",
-                desc: "Explore the latest innovations in coffee technology and bean sourcing.",
-              },
-              {
-                id: 8,
-                cls: "v-tall",
-                date: "15 APR 2026",
-                title: "COFFEE COCKTAILS",
-                desc: "Exquisite espresso martinis, cold-brew negronis, and more.",
-              },
-            ].map((card) => (
-              <div
-                key={card.id}
-                className={`coffee-card ${card.cls}`}
-                data-flip-id={`coffee-${card.id}`}
-              >
-                <div className="card-inner">
-                  <img
-                    src="/upscalemedia-transformed.png"
-                    alt={card.title}
-                    className="card-img"
-                    data-flip-id={`img-${card.id}`}
-                  />
-                  <div className="card-overlay">
-                    <h3
-                      className="card-title"
-                      data-flip-id={`title-${card.id}`}
-                    >
-                      {card.title}
-                    </h3>
-                    <p className="card-date">{card.date}</p>
-                  </div>
-                </div>
-                <div className="hidden-content">{card.desc}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="coffee-detail-overlay">
-          <div className="detail-container">
-            <button className="detail-close">CLOSE [×]</button>
-            <div className="detail-hero" data-flip-id="detail-hero">
-              <img
-                src="null"
-                alt=""
-                className="detail-img"
-                id="detail-active-img"
-              />
-            </div>
-            <div className="detail-content">
-              <h2 className="detail-title" id="detail-active-title">
-                TITLE
-              </h2>
-              <p className="detail-tagline">Code • Coffee • Repeat.</p>
-              <div className="detail-desc" id="detail-active-desc">
-                Lorem ipsum dolor sit amet...
-              </div>
-              <div className="detail-gallery">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <img
-                    key={i}
-                    src="/upscalemedia-transformed.png"
-                    alt={`gallery-${i}`}
-                    className="gal-thumb"
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
+        <div style={{ minHeight: '800px', width: '100%' }}>
+          <Masonry
+            items={items}
+            ease="elastic.out"
+            duration={0.6}
+            stagger={0.05}
+            animateFrom="bottom"
+            scaleOnHover
+            hoverScale={0.95}
+            blurToFocus
+            colorShiftOnHover
+          />
         </div>
       </section>
 
