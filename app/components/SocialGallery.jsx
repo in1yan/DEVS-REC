@@ -70,17 +70,20 @@ const socialData = [
   }
 ];
 
-export default function SocialGallery() {
-  const sectionRef = useRef(null);
-  const containerRef = useRef(null);
+export default function SocialGallery({ sectionRef: externalSectionRef, containerRef: externalContainerRef }) {
+  const internalSectionRef = useRef(null);
+  const internalContainerRef = useRef(null);
   const modalRef = useRef(null);
   const [activeCard, setActiveCard] = useState(null);
 
-  useGSAP(() => {
-    ScrollTrigger.refresh();
+  // Use external refs if provided, otherwise use internal refs
+  const sectionRef = externalSectionRef || internalSectionRef;
+  const containerRef = externalContainerRef || internalContainerRef;
 
+  useGSAP(() => {
     const container = containerRef.current;
-    if (!container) return;
+    const section = sectionRef.current;
+    if (!container || !section) return;
 
     // Perfect horizontal synchronization 
     const distanceToScroll = container.scrollWidth - window.innerWidth;
@@ -91,42 +94,48 @@ export default function SocialGallery() {
     // Ensure the scroll stops smoothly without snapping
     const tl = gsap.timeline({
       scrollTrigger: {
-        trigger: sectionRef.current,
+        trigger: section,
         start: "top top",
-        end: () => `+=${distanceToScroll}`, 
-        scrub: 0.8, 
+        end: () => `+=${distanceToScroll}`,
+        scrub: 0.8,
         pin: true,
-        invalidateOnRefresh: true, 
+        invalidateOnRefresh: true,
+        anticipatePin: 1,
       }
     });
 
     // Horizontal sliding behavior
-    tl.fromTo(container, 
+    tl.fromTo(container,
       { x: -distanceToScroll },
       { x: 0, ease: "none" }
     );
 
     return () => {
-      ScrollTrigger.getAll().forEach(t => t.kill());
+      // Only kill ScrollTriggers associated with this section
+      ScrollTrigger.getAll().forEach(t => {
+        if (t.trigger === section) {
+          t.kill();
+        }
+      });
     };
-  }, { scope: sectionRef });
+  }, { scope: sectionRef, dependencies: [] });
 
   const openModal = (card, e) => {
     setActiveCard(card);
     document.body.style.overflow = 'hidden';
-    
+
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         if (!modalRef.current) return;
         const sourceEl = e.currentTarget;
         const targetEl = modalRef.current.querySelector('.sg-modal-inner');
-        
+
         if (!targetEl) return;
         const state = Flip.getState([sourceEl, targetEl], { props: "borderRadius,boxShadow" });
-        
+
         gsap.set(modalRef.current, { display: 'flex' });
         gsap.fromTo(modalRef.current, { opacity: 0 }, { opacity: 1, duration: 0.3 });
-        
+
         Flip.from(state, {
           targets: [targetEl],
           duration: 0.7,
@@ -134,8 +143,8 @@ export default function SocialGallery() {
           scale: true,
           clearProps: "all",
           onComplete: () => {
-            gsap.fromTo(".sg-modal-info, .sg-modal-media", 
-              { opacity: 0, y: 20 }, 
+            gsap.fromTo(".sg-modal-info, .sg-modal-media",
+              { opacity: 0, y: 20 },
               { opacity: 1, y: 0, duration: 0.5, stagger: 0.1, ease: "power2.out" }
             );
           }
@@ -146,8 +155,8 @@ export default function SocialGallery() {
 
   const closeModal = () => {
     gsap.to(modalRef.current, {
-      opacity: 0, 
-      duration: 0.4, 
+      opacity: 0,
+      duration: 0.4,
       ease: "power2.inOut",
       onComplete: () => {
         gsap.set(modalRef.current, { display: 'none' });
@@ -158,11 +167,11 @@ export default function SocialGallery() {
   };
 
   return (
-    <section ref={sectionRef} className="sg-section" id="repeat-section">
+    <>
       <div ref={containerRef} className="sg-cards-container">
         {socialData.map((data) => (
-          <div 
-            key={data.id} 
+          <div
+            key={data.id}
             // DYNAMIC LAYOUT: Mapped class names apply specific width/height dimensions and offsets
             className={`sg-card sg-${data.type} sg-size-${data.size} sg-offset-${data.offset}`}
             onClick={(e) => openModal(data, e)}
@@ -170,7 +179,7 @@ export default function SocialGallery() {
             <div className="sg-brand-icon">
               {data.type === 'youtube' ? 'YT' : data.type === 'instagram' ? 'IG' : 'IN'}
             </div>
-            
+
             {data.type === 'youtube' && (
               <>
                 <div className="sg-img-wrap">
@@ -184,7 +193,7 @@ export default function SocialGallery() {
                 </div>
               </>
             )}
-            
+
             {data.type === 'instagram' && (
               <>
                 <div className="sg-img-wrap">
@@ -197,7 +206,7 @@ export default function SocialGallery() {
                 </div>
               </>
             )}
-            
+
             {data.type === 'linkedin' && (
               <>
                 <div className="sg-author-wrap">
@@ -207,7 +216,7 @@ export default function SocialGallery() {
                     <p>{data.role}</p>
                   </div>
                 </div>
-                <div className="sg-info" style={{marginTop:0}}>
+                <div className="sg-info" style={{ marginTop: 0 }}>
                   <p className="sg-post-content">{data.content}</p>
                 </div>
               </>
@@ -218,56 +227,56 @@ export default function SocialGallery() {
 
       {/* GSAP Flip Modal */}
       <div ref={modalRef} className="sg-modal">
-         <div className="sg-modal-backdrop" onClick={closeModal}></div>
-         <button className="sg-modal-close" onClick={closeModal}>CLOSE [×]</button>
-         
-         <div className="sg-modal-content">
-            {activeCard && (
-              <div className={`sg-modal-inner sg-modal-${activeCard.type}`}>
-                {activeCard.type === 'youtube' && (
-                  <>
-                     <div className="sg-modal-media">
-                        <iframe width="100%" height="100%" src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=0" title="YouTube video" frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen loading="lazy"></iframe>
-                     </div>
-                     <div className="sg-modal-info">
-                        <h2>{activeCard.title}</h2>
-                        <p style={{marginTop:'12px'}}>{activeCard.views} views • {activeCard.duration}</p>
-                        <a href={activeCard.link} target="_blank" rel="noreferrer" className="sg-link-btn">Watch on YouTube</a>
-                     </div>
-                  </>
-                )}
-                {activeCard.type === 'instagram' && (
-                  <>
-                     <div className="sg-modal-media">
-                        <img src={activeCard.thumbnail} alt="Instagram Post" />
-                     </div>
-                     <div className="sg-modal-info">
-                        <h2 style={{fontSize:'24px', letterSpacing:'0.02em', margin:0}}>Instagram Reel</h2>
-                        <p style={{marginTop:'20px'}}>{activeCard.caption}</p>
-                        <p style={{marginTop:'20px', color:'#fff', fontWeight:700}}>♥ {activeCard.likes} likes</p>
-                        <a href={activeCard.link} target="_blank" rel="noreferrer" className="sg-link-btn">View on Instagram</a>
-                     </div>
-                  </>
-                )}
-                {activeCard.type === 'linkedin' && (
-                  <>
-                     <div className="sg-modal-info sg-linkedin-full">
-                        <div className="sg-author-wrap" style={{marginBottom:'30px'}}>
-                          <div className="sg-avatar" style={{width:'80px', height:'80px'}}></div>
-                          <div>
-                            <h4 style={{fontSize:'24px'}}>{activeCard.author}</h4>
-                            <p style={{fontSize:'16px'}}>{activeCard.role}</p>
-                          </div>
-                        </div>
-                        <p style={{fontSize:'20px', color:'#fff', lineHeight:1.8}}>{activeCard.content}</p>
-                        <a href={activeCard.link} target="_blank" rel="noreferrer" className="sg-link-btn" style={{marginTop:'40px'}}>View on LinkedIn</a>
-                     </div>
-                  </>
-                )}
-              </div>
-            )}
-         </div>
+        <div className="sg-modal-backdrop" onClick={closeModal}></div>
+        <button className="sg-modal-close" onClick={closeModal}>CLOSE [×]</button>
+
+        <div className="sg-modal-content">
+          {activeCard && (
+            <div className={`sg-modal-inner sg-modal-${activeCard.type}`}>
+              {activeCard.type === 'youtube' && (
+                <>
+                  <div className="sg-modal-media">
+                    <iframe width="100%" height="100%" src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=0" title="YouTube video" frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen loading="lazy"></iframe>
+                  </div>
+                  <div className="sg-modal-info">
+                    <h2>{activeCard.title}</h2>
+                    <p style={{ marginTop: '12px' }}>{activeCard.views} views • {activeCard.duration}</p>
+                    <a href={activeCard.link} target="_blank" rel="noreferrer" className="sg-link-btn">Watch on YouTube</a>
+                  </div>
+                </>
+              )}
+              {activeCard.type === 'instagram' && (
+                <>
+                  <div className="sg-modal-media">
+                    <img src={activeCard.thumbnail} alt="Instagram Post" />
+                  </div>
+                  <div className="sg-modal-info">
+                    <h2 style={{ fontSize: '24px', letterSpacing: '0.02em', margin: 0 }}>Instagram Reel</h2>
+                    <p style={{ marginTop: '20px' }}>{activeCard.caption}</p>
+                    <p style={{ marginTop: '20px', color: '#fff', fontWeight: 700 }}>♥ {activeCard.likes} likes</p>
+                    <a href={activeCard.link} target="_blank" rel="noreferrer" className="sg-link-btn">View on Instagram</a>
+                  </div>
+                </>
+              )}
+              {activeCard.type === 'linkedin' && (
+                <>
+                  <div className="sg-modal-info sg-linkedin-full">
+                    <div className="sg-author-wrap" style={{ marginBottom: '30px' }}>
+                      <div className="sg-avatar" style={{ width: '80px', height: '80px' }}></div>
+                      <div>
+                        <h4 style={{ fontSize: '24px' }}>{activeCard.author}</h4>
+                        <p style={{ fontSize: '16px' }}>{activeCard.role}</p>
+                      </div>
+                    </div>
+                    <p style={{ fontSize: '20px', color: '#fff', lineHeight: 1.8 }}>{activeCard.content}</p>
+                    <a href={activeCard.link} target="_blank" rel="noreferrer" className="sg-link-btn" style={{ marginTop: '40px' }}>View on LinkedIn</a>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
-    </section>
+    </>
   );
 }

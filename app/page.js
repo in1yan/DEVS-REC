@@ -2,12 +2,14 @@
 
 import { useRef, useEffect } from "react";
 import Script from "next/script";
+import Image from "next/image";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Flip } from "gsap/Flip";
 import { useGSAP } from "@gsap/react";
 import Lenis from "lenis";
 import Masonry from '../components/Masonry'
+import SocialGallery from "./components/SocialGallery";
 
 export default function Home() {
 
@@ -86,6 +88,8 @@ export default function Home() {
     },
   ];
   const containerRef = useRef(null);
+  const socialGallerySectionRef = useRef(null);
+  const socialGalleryContainerRef = useRef(null);
 
   useGSAP(
     () => {
@@ -347,12 +351,12 @@ export default function Home() {
 
       // 4. OUR PROJECTS Stacked-Card Scroll Sequence
       gsap.set(".project-card", {
-        x: -400,
+        x: 400,
         y: 300,
         opacity: 0,
         scale: 0.85,
-        rotation: -10,
-        transformOrigin: "bottom left",
+        rotation: 10,
+        transformOrigin: "bottom right",
       });
       const projectsTl = gsap.timeline({
         scrollTrigger: {
@@ -800,10 +804,14 @@ export default function Home() {
 
       <section className="hero">
         <div className="image-wrapper">
-          <img
+          <Image
             src="/upscalemedia-transformed.png"
             className="hero-img"
             alt="DEVS Club"
+            fill
+            priority
+            sizes="100vw"
+            style={{ objectFit: 'cover' }}
           />
         </div>
         <div className="bg-title-container">
@@ -992,7 +1000,12 @@ export default function Home() {
           })}
         </div>
       </section>
-
+      <section ref={socialGallerySectionRef} className="sg-section" id="repeat-section">
+        <SocialGallery 
+          sectionRef={socialGallerySectionRef} 
+          containerRef={socialGalleryContainerRef} 
+        />
+      </section>
       <section id="coffee-section" className="coffee-gallery-section">
         <div className="coffee-header">
           <span className="section-label">01</span>
@@ -1003,10 +1016,10 @@ export default function Home() {
           <Masonry
             items={items}
             ease="elastic.out"
-            duration={0.6}
-            stagger={0.05}
+            duration={1.2}
+            stagger={0}
             animateFrom="bottom"
-            triggerStart="top 180%"
+            triggerStart="top 85%"
             scaleOnHover
             hoverScale={0.95}
             blurToFocus
@@ -1077,12 +1090,16 @@ export default function Home() {
           <div className="team-img-stage">
             {["tech", "event", "design", "media", "outreach", "core"].map(
               (t, i) => (
-                <img
+                <Image
                   key={i}
                   className={`team-img ${i === 0 ? "active" : ""}`}
                   data-team={t}
                   src="/upscalemedia-transformed.png"
                   alt={`${t} Team`}
+                  width={800}
+                  height={600}
+                  priority
+                  style={{ objectFit: 'cover' }}
                 />
               ),
             )}

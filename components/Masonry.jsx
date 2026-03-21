@@ -96,7 +96,8 @@ const Masonry = ({
       case 'top':
         return { x: item.x, y: -400 };
       case 'bottom':
-        return { x: item.x, y: window.innerHeight + 200 };
+        // Start from below the item's final position
+        return { x: item.x, y: item.y + 150 };
       case 'left':
         return { x: -400, y: item.y };
       case 'right':
@@ -107,7 +108,7 @@ const Masonry = ({
           y: containerRect.height / 2 - item.h / 2
         };
       default:
-        return { x: item.x, y: item.y + 100 };
+        return { x: item.x, y: item.y + 150 };
     }
   };
 
@@ -169,8 +170,7 @@ const Masonry = ({
                 ...animProps,
                 ...(blurToFocus && { filter: 'blur(0px)' }),
                 duration: 0.8,
-                ease: 'power3.out',
-                delay: index * stagger
+                ease: 'power3.out'
               });
             }
           });
