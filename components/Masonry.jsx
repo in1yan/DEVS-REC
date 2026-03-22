@@ -2,6 +2,7 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import EventModal from './EventModal';
 
 if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger);
@@ -79,6 +80,8 @@ const Masonry = ({
   const [containerRef, { width }] = useMeasure();
   const [imagesReady, setImagesReady] = useState(false);
   const hasMounted = useRef(false);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const getInitialPosition = (item) => {
     if (typeof window === 'undefined') return { x: item.x, y: item.y };
@@ -202,6 +205,11 @@ const Masonry = ({
       const overlay = element.querySelector('.color-overlay');
       if (overlay) gsap.to(overlay, { opacity: 0.3, duration: 0.3 });
     }
+    // Animate title overlay
+    const titleOverlay = element.querySelector('.title-overlay');
+    if (titleOverlay) {
+      gsap.to(titleOverlay, { opacity: 1, duration: 0.3, ease: 'power2.out' });
+    }
   };
 
   const handleMouseLeave = (id, element) => {
@@ -216,30 +224,62 @@ const Masonry = ({
       const overlay = element.querySelector('.color-overlay');
       if (overlay) gsap.to(overlay, { opacity: 0, duration: 0.3 });
     }
+    // Hide title overlay
+    const titleOverlay = element.querySelector('.title-overlay');
+    if (titleOverlay) {
+      gsap.to(titleOverlay, { opacity: 0, duration: 0.3, ease: 'power2.out' });
+    }
+  };
+
+  const handleItemClick = (item) => {
+    setSelectedEvent(item);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setTimeout(() => setSelectedEvent(null), 200); // Clear after animation
   };
 
   return (
-    <div ref={containerRef} className="relative w-full" style={{ minHeight: '800px' }}>
-      {grid.map(item => (
-        <div
-          key={item.id}
-          data-key={item.id}
-          className="absolute box-content cursor-pointer"
-          style={{ willChange: 'transform, width, height, opacity' }}
-          onClick={() => window.open(item.url, '_blank', 'noopener')}
-          onMouseEnter={e => handleMouseEnter(item.id, e.currentTarget)}
-          onMouseLeave={e => handleMouseLeave(item.id, e.currentTarget)}>
+    <>
+      <div ref={containerRef} className="relative w-full" style={{ minHeight: '800px' }}>
+        {grid.map(item => (
           <div
-            className="relative w-full h-full bg-cover bg-center rounded-[10px] shadow-[0px_10px_50px_-10px_rgba(0,0,0,0.2)] uppercase text-[10px] leading-[10px]"
-            style={{ backgroundImage: `url(${item.img})` }}>
-            {colorShiftOnHover && (
-              <div
-                className="color-overlay absolute inset-0 rounded-[10px] bg-gradient-to-tr from-pink-500/50 to-sky-500/50 opacity-0 pointer-events-none" />
-            )}
+            key={item.id}
+            data-key={item.id}
+            className="absolute box-content cursor-pointer"
+            style={{ willChange: 'transform, width, height, opacity' }}
+            onClick={() => handleItemClick(item)}
+            onMouseEnter={e => handleMouseEnter(item.id, e.currentTarget)}
+            onMouseLeave={e => handleMouseLeave(item.id, e.currentTarget)}>
+            <div
+              className="relative w-full h-full bg-cover bg-center rounded-[10px] shadow-[0px_10px_50px_-10px_rgba(0,0,0,0.2)] uppercase text-[10px] leading-[10px] overflow-hidden"
+              style={{ backgroundImage: `url(${item.img})` }}>
+              {colorShiftOnHover && (
+                <div
+                  className="color-overlay absolute inset-0 rounded-[10px] bg-gradient-to-tr from-pink-500/50 to-sky-500/50 opacity-0 pointer-events-none" />
+              )}
+              {item.title && (
+                <div
+                  className="title-overlay absolute bottom-0 left-0 right-0 px-4 py-3 bg-gradient-to-t from-black/80 via-black/60 to-transparent opacity-0 pointer-events-none"
+                  style={{ willChange: 'opacity' }}>
+                  <p className="text-white text-sm font-medium text-center normal-case leading-tight">
+                    {item.title}
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+      
+      <EventModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        event={selectedEvent}
+      />
+    </>
   );
 };
 
